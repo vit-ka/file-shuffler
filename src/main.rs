@@ -10,7 +10,7 @@ fn main() {
             continue;
         }
         let ext = file.extension().unwrap().to_str().unwrap();
-        if ["jpg", "mp4", "png", "webp", "jpeg"].contains(&ext) {
+        if ["jpg", "mp4", "png", "webp", "jpeg", "gif"].contains(&ext) {
             let new_name: String = rand::thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(20)
