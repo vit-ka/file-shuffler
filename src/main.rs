@@ -1,5 +1,6 @@
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
+use std::sync::Mutex;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -20,6 +21,8 @@ fn main() {
             .unwrap()
             .progress_chars("=> "),
     );
+
+    let renamed: Mutex<Vec<(String, String)>> = Mutex::new(Vec::new());
 
     files.par_iter().for_each(|dir_entry| {
         let name = dir_entry.path().to_string_lossy().into_owned();
@@ -50,7 +53,13 @@ fn main() {
             spinner.set_message(format!("skip (already hashed): {}", new_file_name));
         } else {
             match std::fs::rename(&name, &new_full_name) {
-                Ok(_) => spinner.set_message(format!("renaming: {}.{} -> {}", stem, ext, new_file_name)),
+                Ok(_) => {
+                    renamed.lock().unwrap().push((
+                        format!("{}.{}", stem, ext),
+                        new_file_name.clone(),
+                    ));
+                    spinner.set_message(format!("renaming: {}.{} -> {}", stem, ext, new_file_name));
+                }
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                     std::fs::remove_file(&name).unwrap();
                     spinner.set_message(format!(
@@ -67,4 +76,12 @@ fn main() {
     });
 
     pb.finish_with_message("done");
+
+    let renamed = renamed.into_inner().unwrap();
+    if !renamed.is_empty() {
+        println!("\nRenamed files:");
+        for (old, new) in &renamed {
+            println!("  {} -> {}", old, new);
+        }
+    }
 }
